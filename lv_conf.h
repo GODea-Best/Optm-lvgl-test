@@ -175,17 +175,19 @@
      * - gradients use RGB888
      * - bitmaps with transparency may use ARGB8888
      */
+    /* Only the formats actually needed: RGB565 (display), ARGB8888 (internal
+     * gradient/layer compositing). All others increase code size for nothing. */
     #define LV_DRAW_SW_SUPPORT_RGB565       1
-    #define LV_DRAW_SW_SUPPORT_RGB565_SWAPPED       1
-    #define LV_DRAW_SW_SUPPORT_RGB565A8     1
+    #define LV_DRAW_SW_SUPPORT_RGB565_SWAPPED       0
+    #define LV_DRAW_SW_SUPPORT_RGB565A8     0
     #define LV_DRAW_SW_SUPPORT_RGB888       1
     #define LV_DRAW_SW_SUPPORT_XRGB8888     1
     #define LV_DRAW_SW_SUPPORT_ARGB8888     1
-    #define LV_DRAW_SW_SUPPORT_ARGB8888_PREMULTIPLIED 1
-    #define LV_DRAW_SW_SUPPORT_L8           1
-    #define LV_DRAW_SW_SUPPORT_AL88         1
-    #define LV_DRAW_SW_SUPPORT_A8           1
-    #define LV_DRAW_SW_SUPPORT_I1           1
+    #define LV_DRAW_SW_SUPPORT_ARGB8888_PREMULTIPLIED 0
+    #define LV_DRAW_SW_SUPPORT_L8           0
+    #define LV_DRAW_SW_SUPPORT_AL88         0
+    #define LV_DRAW_SW_SUPPORT_A8           0
+    #define LV_DRAW_SW_SUPPORT_I1           0
 
     /* The threshold of the luminance to consider a pixel as
      * active in indexed color format */
@@ -217,7 +219,8 @@
          *  The circumference of 1/4 circle are saved for anti-aliasing.
          *  `radius * 4` bytes are used per circle (the most often used radiuses are saved).
          *  - 0: disables caching */
-        #define LV_DRAW_SW_CIRCLE_CACHE_SIZE 4
+        /* Increased for arc-heavy animated screens (watch screen draws 3 arcs per frame) */
+        #define LV_DRAW_SW_CIRCLE_CACHE_SIZE 8
     #endif
 
     #define  LV_USE_DRAW_SW_ASM     LV_DRAW_SW_ASM_NONE
@@ -227,7 +230,8 @@
     #endif
 
     /** Enable drawing complex gradients in software: linear at an angle, radial or conical */
-    #define LV_USE_DRAW_SW_COMPLEX_GRADIENTS    1
+    /* Not used — all gradients are simple vertical/horizontal or vector linear */
+    #define LV_USE_DRAW_SW_COMPLEX_GRADIENTS    0
 
 #endif
 
@@ -456,45 +460,9 @@
  *-----------*/
 
 /** Enable log module */
-#define LV_USE_LOG 1
-#if LV_USE_LOG
-    /** Set value to one of the following levels of logging detail:
-     *  - LV_LOG_LEVEL_TRACE    Log detailed information.
-     *  - LV_LOG_LEVEL_INFO     Log important events.
-     *  - LV_LOG_LEVEL_WARN     Log if something unwanted happened but didn't cause a problem.
-     *  - LV_LOG_LEVEL_ERROR    Log only critical issues, when system may fail.
-     *  - LV_LOG_LEVEL_USER     Log only custom log messages added by the user.
-     *  - LV_LOG_LEVEL_NONE     Do not log anything. */
-    #define LV_LOG_LEVEL LV_LOG_LEVEL_WARN
-
-    /** - 1: Print log with 'printf';
-     *  - 0: User needs to register a callback with `lv_log_register_print_cb()`. */
-    #define LV_LOG_PRINTF 1
-
-    /** Set callback to print logs.
-     *  E.g `my_print`. The prototype should be `void my_print(lv_log_level_t level, const char * buf)`.
-     *  Can be overwritten by `lv_log_register_print_cb`. */
-    //#define LV_LOG_PRINT_CB
-
-    /** - 1: Enable printing timestamp;
-     *  - 0: Disable printing timestamp. */
-    #define LV_LOG_USE_TIMESTAMP 1
-
-    /** - 1: Print file and line number of the log;
-     *  - 0: Do not print file and line number of the log. */
-    #define LV_LOG_USE_FILE_LINE 1
-
-    /* Enable/disable LV_LOG_TRACE in modules that produces a huge number of logs. */
-    #define LV_LOG_TRACE_MEM        1   /**< Enable/disable trace logs in memory operations. */
-    #define LV_LOG_TRACE_TIMER      1   /**< Enable/disable trace logs in timer operations. */
-    #define LV_LOG_TRACE_INDEV      1   /**< Enable/disable trace logs in input device operations. */
-    #define LV_LOG_TRACE_DISP_REFR  1   /**< Enable/disable trace logs in display re-draw operations. */
-    #define LV_LOG_TRACE_EVENT      1   /**< Enable/disable trace logs in event dispatch logic. */
-    #define LV_LOG_TRACE_OBJ_CREATE 1   /**< Enable/disable trace logs in object creation (core `obj` creation plus every widget). */
-    #define LV_LOG_TRACE_LAYOUT     1   /**< Enable/disable trace logs in flex- and grid-layout operations. */
-    #define LV_LOG_TRACE_ANIM       1   /**< Enable/disable trace logs in animation logic. */
-    #define LV_LOG_TRACE_CACHE      1   /**< Enable/disable trace logs in cache operations. */
-#endif  /*LV_USE_LOG*/
+/* Logging disabled for embedded target — eliminates string literals and
+ * per-tick call overhead. Re-enable temporarily for debugging.           */
+#define LV_USE_LOG 0
 
 /*-------------
  * Asserts
@@ -504,9 +472,9 @@
  * If LV_USE_LOG is enabled, an error message will be printed on failure. */
 #define LV_USE_ASSERT_NULL          1   /**< Check if the parameter is NULL. (Very fast, recommended) */
 #define LV_USE_ASSERT_MALLOC        1   /**< Checks is the memory is successfully allocated or no. (Very fast, recommended) */
-#define LV_USE_ASSERT_STYLE         1
-#define LV_USE_ASSERT_MEM_INTEGRITY 1
-#define LV_USE_ASSERT_OBJ           1
+#define LV_USE_ASSERT_STYLE         0
+#define LV_USE_ASSERT_MEM_INTEGRITY 0
+#define LV_USE_ASSERT_OBJ           0
 
 /** Add a custom handler when assert happens e.g. to restart MCU. */
 #define LV_ASSERT_HANDLER_INCLUDE <stdint.h>
@@ -539,14 +507,11 @@
 #endif
 
 /** Default cache size in bytes.
- *  Used by image decoders such as `lv_lodepng` to keep the decoded image in memory.
- *  If size is not set to 0, the decoder will fail to decode when the cache is full.
- *  If size is 0, the cache function is not enabled and the decoded memory will be
- *  released immediately after use. */
+ *  Kept at 0: the SVG decoder in LVGL v9 destroys the decoded draw buffer and
+ *  returns LV_RESULT_INVALID if lv_image_decoder_add_to_cache fails (e.g. cache
+ *  too small for the SVG render tree), so enabling the cache silently breaks SVG. */
 #define LV_CACHE_DEF_SIZE       0
 
-/** Default number of image header cache entries. The cache is used to store the headers of images
- *  The main logic is like `LV_CACHE_DEF_SIZE` but for image headers. */
 #define LV_IMAGE_HEADER_CACHE_DEF_CNT 0
 
 /** Number of stops allowed per gradient. Increase this to allow more stops.
@@ -565,10 +530,11 @@
 #define LV_OBJ_STYLE_CACHE      1
 
 /** Add `id` field to `lv_obj_t` */
-#define LV_USE_OBJ_ID           1
+/* Not used by any application code — saves 8 bytes per widget instance */
+#define LV_USE_OBJ_ID           0
 
 /**  Enable support widget names*/
-#define LV_USE_OBJ_NAME         1
+#define LV_USE_OBJ_NAME         0
 
 /** Automatically assign an ID when obj is created */
 #define LV_OBJ_ID_AUTO_ASSIGN   LV_USE_OBJ_ID
@@ -651,37 +617,38 @@
  *===================*/
 
 /* Montserrat fonts with ASCII range and some symbols using bpp = 4
- * https://fonts.google.com/specimen/Montserrat */
+ * https://fonts.google.com/specimen/Montserrat
+ * Sizes enabled: only those directly referenced in src/ code.
+ * Custom weight variants (bold, extrabold, etc.) are pre-compiled in src/. */
 #define LV_FONT_MONTSERRAT_8  0
 #define LV_FONT_MONTSERRAT_10 0
-#define LV_FONT_MONTSERRAT_12 1
-#define LV_FONT_MONTSERRAT_14 1
-#define LV_FONT_MONTSERRAT_16 1
-#define LV_FONT_MONTSERRAT_18 1
-#define LV_FONT_MONTSERRAT_20 1
-#define LV_FONT_MONTSERRAT_22 1
-#define LV_FONT_MONTSERRAT_24 1
-#define LV_FONT_MONTSERRAT_26 1
-#define LV_FONT_MONTSERRAT_28 1
-#define LV_FONT_MONTSERRAT_30 1
-#define LV_FONT_MONTSERRAT_32 1
-#define LV_FONT_MONTSERRAT_34 1
-#define LV_FONT_MONTSERRAT_36 1
-#define LV_FONT_MONTSERRAT_38 1
-#define LV_FONT_MONTSERRAT_40 1
-#define LV_FONT_MONTSERRAT_42 1
-#define LV_FONT_MONTSERRAT_44 1
-#define LV_FONT_MONTSERRAT_46 1
-#define LV_FONT_MONTSERRAT_48 1
+#define LV_FONT_MONTSERRAT_12 1   /* control_panel section headers           */
+#define LV_FONT_MONTSERRAT_14 1   /* control_panel button labels             */
+#define LV_FONT_MONTSERRAT_16 1   /* control_panel title, violation warning  */
+#define LV_FONT_MONTSERRAT_18 0
+#define LV_FONT_MONTSERRAT_20 1   /* free_restart_icons, initial_test_icons  */
+#define LV_FONT_MONTSERRAT_22 0
+#define LV_FONT_MONTSERRAT_24 0
+#define LV_FONT_MONTSERRAT_26 0
+#define LV_FONT_MONTSERRAT_28 1   /* initial_test_pass_icons BrAC value      */
+#define LV_FONT_MONTSERRAT_30 0
+#define LV_FONT_MONTSERRAT_32 0
+#define LV_FONT_MONTSERRAT_34 0
+#define LV_FONT_MONTSERRAT_36 1   /* invalid_sample_icons, test_error_icons  */
+#define LV_FONT_MONTSERRAT_38 0
+#define LV_FONT_MONTSERRAT_40 0
+#define LV_FONT_MONTSERRAT_42 0
+#define LV_FONT_MONTSERRAT_44 0
+#define LV_FONT_MONTSERRAT_46 0
+#define LV_FONT_MONTSERRAT_48 1   /* icon screens (✓, ✗, digit glyphs)      */
 
-/* Demonstrate special features */
-#define LV_FONT_MONTSERRAT_28_COMPRESSED    1
-#define LV_FONT_DEJAVU_16_PERSIAN_HEBREW    1
-#define LV_FONT_SOURCE_HAN_SANS_SC_14_CJK   0  /**< 1338 most common CJK radicals */
-#define LV_FONT_SOURCE_HAN_SANS_SC_16_CJK   1
+#define LV_FONT_MONTSERRAT_28_COMPRESSED    0
+#define LV_FONT_DEJAVU_16_PERSIAN_HEBREW    0
+#define LV_FONT_SOURCE_HAN_SANS_SC_14_CJK   0
+#define LV_FONT_SOURCE_HAN_SANS_SC_16_CJK   0
 
 /** Pixel perfect monospaced fonts */
-#define LV_FONT_UNSCII_8  1
+#define LV_FONT_UNSCII_8  0
 #define LV_FONT_UNSCII_16 0
 
 /** Optionally declare custom fonts here.
@@ -715,11 +682,12 @@
 
 /**
  * Select a character encoding for strings.
- * Your IDE or editor should have the same character encoding.
+ * All label strings in this project are pure ASCII — UTF-8 scanning of
+ * every string on every render call is unnecessary overhead.
  * - LV_TXT_ENC_UTF8
  * - LV_TXT_ENC_ASCII
  */
-#define LV_TXT_ENC LV_TXT_ENC_UTF8
+#define LV_TXT_ENC LV_TXT_ENC_ASCII
 
 /** While rendering text strings, break (wrap) text on these chars. */
 #define LV_TXT_BREAK_CHARS " ,.;:-_)]}"
@@ -770,96 +738,48 @@
  * */
 #define LV_WIDGETS_HAS_DEFAULT_VALUE  1
 
-#define LV_USE_ANIMIMG    1
-
+/* Widgets actually used: lv_obj, lv_label, lv_image, lv_arc, lv_button.
+ * Everything else disabled to reduce binary size.                        */
+#define LV_USE_ANIMIMG    0
 #define LV_USE_ARC        1
-
-#define LV_USE_ARCLABEL  1
-
-#define LV_USE_BAR        1
-
-#define LV_USE_BUTTON        1
-
-#define LV_USE_BUTTONMATRIX  1
-
-#define LV_USE_CALENDAR   1
-#if LV_USE_CALENDAR
-    #define LV_CALENDAR_WEEK_STARTS_MONDAY 0
-    #if LV_CALENDAR_WEEK_STARTS_MONDAY
-        #define LV_CALENDAR_DEFAULT_DAY_NAMES {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
-    #else
-        #define LV_CALENDAR_DEFAULT_DAY_NAMES {"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}
-    #endif
-
-    #define LV_CALENDAR_DEFAULT_MONTH_NAMES {"January", "February", "March",  "April", "May",  "June", "July", "August", "September", "October", "November", "December"}
-    #define LV_USE_CALENDAR_HEADER_ARROW 1
-    #define LV_USE_CALENDAR_HEADER_DROPDOWN 1
-    #define LV_USE_CALENDAR_CHINESE 0
-#endif  /*LV_USE_CALENDAR*/
-
-#define LV_USE_CANVAS     1
-
-#define LV_USE_CHART      1
-
-#define LV_USE_CHECKBOX   1
-
-#define LV_USE_DROPDOWN   1   /**< Requires: lv_label */
-
+#define LV_USE_ARCLABEL   0
+#define LV_USE_BAR        0
+#define LV_USE_BUTTON     1
+#define LV_USE_BUTTONMATRIX  0
+#define LV_USE_CALENDAR   0
+#define LV_USE_CANVAS     0
+#define LV_USE_CHART      0
+#define LV_USE_CHECKBOX   0
+#define LV_USE_DROPDOWN   0
 #define LV_USE_IMAGE      1   /**< Requires: lv_label */
-
-#define LV_USE_IMAGEBUTTON     1
-
-#define LV_USE_KEYBOARD   1
+#define LV_USE_IMAGEBUTTON     0
+#define LV_USE_KEYBOARD   0
 
 #define LV_USE_LABEL      1
 #if LV_USE_LABEL
-    #define LV_LABEL_TEXT_SELECTION 1   /**< Enable selecting text of the label */
+    #define LV_LABEL_TEXT_SELECTION 0   /**< No keyboard/pointer text selection on embedded display */
     #define LV_LABEL_LONG_TXT_HINT 1    /**< Store some extra info in labels to speed up drawing of very long text */
     #define LV_LABEL_WAIT_CHAR_COUNT 3  /**< The count of wait chart */
 #endif
 
-#define LV_USE_LED        1
-
-#define LV_USE_LINE       1
-
-#define LV_USE_LIST       1
-
-#define LV_USE_LOTTIE     1
-
-#define LV_USE_MENU       1
-
-#define LV_USE_MSGBOX     1
-
-#define LV_USE_ROLLER     1   /**< Requires: lv_label */
-
-#define LV_USE_SCALE      1
-
-#define LV_USE_SLIDER     1   /**< Requires: lv_bar */
-
-#define LV_USE_SPAN       1
-#if LV_USE_SPAN
-    /** A line of text can contain this maximum number of span descriptors. */
-    #define LV_SPAN_SNIPPET_STACK_SIZE 64
-#endif
-
-#define LV_USE_SPINBOX    1
-
-#define LV_USE_SPINNER    1
-
-#define LV_USE_SWITCH     1
-
-#define LV_USE_TABLE      1
-
-#define LV_USE_TABVIEW    1
-
-#define LV_USE_TEXTAREA   1   /**< Requires: lv_label */
-#if LV_USE_TEXTAREA != 0
-    #define LV_TEXTAREA_DEF_PWD_SHOW_TIME 1500    /**< [ms] */
-#endif
-
-#define LV_USE_TILEVIEW   1
-
-#define LV_USE_WIN        1
+#define LV_USE_LED        0
+#define LV_USE_LINE       0
+#define LV_USE_LIST       0
+#define LV_USE_LOTTIE     0
+#define LV_USE_MENU       0
+#define LV_USE_MSGBOX     0
+#define LV_USE_ROLLER     0
+#define LV_USE_SCALE      0
+#define LV_USE_SLIDER     0
+#define LV_USE_SPAN       0
+#define LV_USE_SPINBOX    0
+#define LV_USE_SPINNER    0
+#define LV_USE_SWITCH     0
+#define LV_USE_TABLE      0
+#define LV_USE_TABVIEW    0
+#define LV_USE_TEXTAREA   0
+#define LV_USE_TILEVIEW   0
+#define LV_USE_WIN        0
 
 #define LV_USE_3DTEXTURE  0
 
@@ -980,28 +900,14 @@
     #define LV_FS_FROGFS_LETTER '\0'
 #endif
 
-/** LODEPNG decoder library */
-#define LV_USE_LODEPNG 1
-
-/** PNG decoder(libpng) library */
-#define LV_USE_LIBPNG 0
-
-/** BMP decoder library */
-#define LV_USE_BMP 1
-
-/** JPG + split JPG decoder library.
- *  Split JPG is a custom format optimized for embedded systems. */
-#define LV_USE_TJPGD 1
-
-/** libjpeg-turbo decoder library.
- *  - Supports complete JPEG specifications and high-performance JPEG decoding. */
+/* Image decoders — only SVG (via ThorVG) is used. All raster decoders disabled. */
+#define LV_USE_LODEPNG 0
+#define LV_USE_LIBPNG  0
+#define LV_USE_BMP     0
+#define LV_USE_TJPGD   0
 #define LV_USE_LIBJPEG_TURBO 0
-
-/** WebP decoder library */
 #define LV_USE_LIBWEBP 0
-
-/** GIF decoder library */
-#define LV_USE_GIF 0
+#define LV_USE_GIF     0
 #if LV_USE_GIF
     /** GIF decoder accelerate */
     #define LV_GIF_CACHE_DECODE_DATA 0
@@ -1013,14 +919,9 @@
 /** Decode bin images to RAM */
 #define LV_BIN_DECODER_RAM_LOAD 1
 
-/** RLE decompress library */
-#define LV_USE_RLE 1
-
-/** QR code library */
-#define LV_USE_QRCODE 1
-
-/** Barcode code library */
-#define LV_USE_BARCODE 1
+#define LV_USE_RLE     0
+#define LV_USE_QRCODE  0
+#define LV_USE_BARCODE 0
 
 /** FreeType library */
 #define LV_USE_FREETYPE 0
@@ -1033,14 +934,8 @@
     #define LV_FREETYPE_CACHE_FT_GLYPH_CNT 256
 #endif
 
-/** Built-in TTF decoder */
-#define LV_USE_TINY_TTF 1
-#if LV_USE_TINY_TTF
-    /* Enable loading TTF data from files */
-    #define LV_TINY_TTF_FILE_SUPPORT 0
-    #define LV_TINY_TTF_CACHE_GLYPH_CNT 128
-    #define LV_TINY_TTF_CACHE_KERNING_CNT 256
-#endif
+/* All fonts are pre-compiled bitmaps in src/ — no runtime TTF decoding needed */
+#define LV_USE_TINY_TTF 0
 
 /** Rlottie library */
 #define LV_USE_RLOTTIE 0
@@ -1056,7 +951,7 @@
 
 /** Enable ThorVG (vector graphics library) from the src/libs folder.
  *  Requires LV_USE_VECTOR_GRAPHIC */
-#define LV_USE_THORVG_INTERNAL 1 
+#define LV_USE_THORVG_INTERNAL 1
 
 /** Enable ThorVG by assuming that its installed and linked to the project
  *  Requires LV_USE_VECTOR_GRAPHIC */
@@ -1073,7 +968,7 @@
 
 /*SVG library
  *  - Requires `LV_USE_VECTOR_GRAPHIC = 1` */
-#define LV_USE_SVG 0
+#define LV_USE_SVG 1
 #define LV_USE_SVG_ANIMATION 0
 #define LV_USE_SVG_DEBUG 0
 
@@ -1095,7 +990,7 @@
 /* Documentation for several of the below items can be found here: https://docs.lvgl.io/master/auxiliary-modules/index.html . */
 
 /** 1: Enable API to take snapshot for object */
-#define LV_USE_SNAPSHOT 0
+#define LV_USE_SNAPSHOT 1
 
 /** 1: Enable system monitor component */
 #define LV_USE_SYSMON   1
@@ -1200,7 +1095,7 @@
 #define LV_USE_FRAGMENT 0
 
 /** 1: Support using images as font in label or span widgets */
-#define LV_USE_IMGFONT 1
+#define LV_USE_IMGFONT 0
 
 /** 1: Enable an observer pattern implementation */
 #define LV_USE_OBSERVER 1
@@ -1263,6 +1158,8 @@
 
 /*1: Enable color filter style*/
 #define LV_USE_COLOR_FILTER     0
+
+#define LV_USE_TRANSFORM  1
 
 /*==================
  * DEVICES

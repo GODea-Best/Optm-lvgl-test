@@ -40,6 +40,16 @@ endif()
 # Main include files of the project
 include_directories(${PROJECT_SOURCE_DIR}/main/inc)
 
+# src subdirectory include paths — lets all source files use plain #include "name.h"
+# regardless of which subfolder they live in, with no source changes required.
+include_directories(
+    ${PROJECT_SOURCE_DIR}/src
+    ${PROJECT_SOURCE_DIR}/src/fonts
+    ${PROJECT_SOURCE_DIR}/src/screens
+    ${PROJECT_SOURCE_DIR}/src/assets
+    ${PROJECT_SOURCE_DIR}/src/ui
+)
+
 # Define options for LVGL with default values (OFF)
 option(LV_USE_DRAW_SDL "Use SDL draw unit" OFF)
 option(LV_USE_LIBPNG "Use libpng to decode PNG" OFF)
@@ -65,12 +75,96 @@ add_compile_definitions($<$<BOOL:${LV_USE_LIBPNG}>:LV_USE_LIBPNG=1>)
 add_compile_definitions($<$<BOOL:${LV_USE_LIBJPEG_TURBO}>:LV_USE_LIBJPEG_TURBO=1>)
 add_compile_definitions($<$<BOOL:${LV_USE_FFMPEG}>:LV_USE_FFMPEG=1>)
 
+# Disable LVGL demos and examples — they use widgets/fonts disabled in lv_conf.h
+set(CONFIG_LV_BUILD_DEMOS OFF CACHE BOOL "" FORCE)
+set(CONFIG_LV_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
 # Add LVGL subdirectory
 add_subdirectory(lvgl)
 target_include_directories(lvgl PUBLIC ${PROJECT_SOURCE_DIR} ${SDL2_INCLUDE_DIRS})
 
-set(MAIN_SOURCES src/mouse_cursor_icon.c src/hal/hal.c)
-set(MAIN_LIBS lvgl lvgl::examples lvgl::demos lvgl::thorvg ${SDL2_LIBRARIES})
+set(MAIN_SOURCES
+# assets
+src/assets/mouse_cursor_icon.c
+# hal
+src/hal/hal.c
+# fonts
+src/fonts/lv_font_montserrat_light_7.c
+src/fonts/lv_font_montserrat_light_12.c
+src/fonts/lv_font_montserrat_light_16.c
+src/fonts/lv_font_montserrat_regular_10.c
+src/fonts/lv_font_montserrat_regular_12.c
+src/fonts/lv_font_montserrat_regular_14.c
+src/fonts/lv_font_montserrat_regular_16.c
+src/fonts/lv_font_montserrat_regular_18.c
+src/fonts/lv_font_montserrat_regular_20.c
+src/fonts/lv_font_montserrat_regular_22.c
+src/fonts/lv_font_montserrat_regular_24.c
+src/fonts/lv_font_montserrat_semibold_12.c
+src/fonts/lv_font_montserrat_semibold_16.c
+src/fonts/lv_font_montserrat_semibold_20.c
+src/fonts/lv_font_montserrat_semibold_22.c
+src/fonts/lv_font_montserrat_semibold_24.c
+src/fonts/lv_font_montserrat_bold_16.c
+src/fonts/lv_font_montserrat_bold_18.c
+src/fonts/lv_font_montserrat_bold_20.c
+src/fonts/lv_font_montserrat_bold_22.c
+src/fonts/lv_font_montserrat_bold_24.c
+src/fonts/lv_font_montserrat_extrabold_16.c
+src/fonts/lv_font_montserrat_extrabold_18.c
+src/fonts/lv_font_montserrat_extrabold_20.c
+src/fonts/lv_font_montserrat_extrabold_22.c
+src/fonts/lv_font_montserrat_extrabold_24.c
+# control panel (simulator)
+src/control_panel.c
+# screens
+src/screens/screen_blow_prompt.c
+src/screens/screen_blow_prompt_anim.c
+src/screens/screen_diagnostic.c
+src/screens/screen_free_restart.c
+src/screens/screen_free_restart_bold.c
+src/screens/screen_free_restart_icons.c
+src/screens/screen_initial_card.c
+src/screens/screen_initial_card_bold.c
+src/screens/screen_initial_test.c
+src/screens/screen_initial_test_icons.c
+src/screens/screen_initial_test_pass.c
+src/screens/screen_initial_test_pass_icons.c
+src/screens/screen_invalid_sample.c
+src/screens/screen_invalid_sample_bold.c
+src/screens/screen_invalid_sample_icons.c
+src/screens/screen_lockout.c
+src/screens/screen_lockout_bold.c
+src/screens/screen_lockout_icons.c
+src/screens/screen_logo.c
+src/screens/screen_optmg4_logo.c
+src/screens/screen_retest_alert.c
+src/screens/screen_retest_alert_bold.c
+src/screens/screen_retest_alert_icons.c
+src/screens/screen_sample_analysis.c
+src/screens/screen_service_alert.c
+src/screens/screen_service_alert_bold.c
+src/screens/screen_service_alert_icons.c
+src/screens/screen_service_warning.c
+src/screens/screen_service_warning_bold.c
+src/screens/screen_service_warning_icons.c
+src/screens/screen_tamper_warn.c
+src/screens/screen_test_error.c
+src/screens/screen_test_error_bold.c
+src/screens/screen_test_error_icons.c
+src/screens/screen_test_pass_bold.c
+src/screens/screen_test_pass_watch.c
+src/screens/screen_usa_logo.c
+src/screens/screen_usa_logo_3d.c
+src/screens/screen_violation_lockout.c
+src/screens/screen_violation_lockout_bold.c
+src/screens/screen_violation_lockout_icons.c
+src/screens/screen_violation_warning.c
+src/screens/screen_violation_warning_bold.c
+src/screens/screen_violation_warning_icons.c
+src/screens/screen_warning_msg.c
+)
+set(MAIN_LIBS lvgl lvgl::thorvg ${SDL2_LIBRARIES})
 
 # Create the main executable, depending on the FreeRTOS option
 if(USE_FREERTOS)
@@ -152,6 +246,15 @@ if (WIN32)
         target_link_options(main PRIVATE "/SUBSYSTEM:CONSOLE")
     else()
         target_link_options(main PRIVATE "-mconsole")
+    endif()
+endif()
+
+# Release build: optimise for size+speed and strip dead code at link time
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(lvgl PRIVATE -O2 -ffunction-sections -fdata-sections)
+    target_compile_options(main  PRIVATE -O2 -ffunction-sections -fdata-sections)
+    if(NOT MSVC)
+        target_link_options(main PRIVATE -Wl,--gc-sections)
     endif()
 endif()
 
